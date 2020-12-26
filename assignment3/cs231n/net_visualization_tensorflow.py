@@ -34,8 +34,16 @@ def compute_saliency_maps(X, y, model):
     # 4) Finally, process the returned gradient to compute the saliency map.      #
     ###############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    
+    N, H, W, _ = X.shape
+    x = tf.Variable(X)
+    with tf.GradientTape() as tape:
+      scores = model(x)
+      predict = tf.gather_nd(scores, tf.stack((tf.range(N), y), axis=1))
+      saliency = tape.gradient(predict, x)
+    
+    saliency = saliency.numpy()
+    saliency = np.max(np.abs(saliency), axis=3, keepdims=True).reshape(N, H, W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -84,7 +92,26 @@ def make_fooling_image(X, target_y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    verbose = False
+    ty = -1
+    T = 0
+    while (T < 5000 and ty != target_y):
+      
+      with tf.GradientTape() as tape:
+        X_fooling = tf.Variable(X_fooling)
+        scores = model(X_fooling)
+        # scores = scores.numpy()
+        out = scores[0, target_y]
+        g = tape.gradient(out, X_fooling) 
+      
+      ty = int(tf.math.argmax(scores, axis=1).numpy())
+      g = g / tf.norm(g).numpy()
+      X_fooling = X_fooling + learning_rate * g
+      
+      T += 1
+      if verbose:
+        print(T)
+   
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -103,7 +130,14 @@ def class_visualization_update_step(X, model, target_y, l2_reg, learning_rate):
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    X = tf.Variable(X)
+    with tf.GradientTape() as tape:
+      scores = model(X)
+      out = scores[0, target_y]
+      dx = tape.gradient(out, X).numpy()
+    
+    X = X.numpy()
+    X += learning_rate * (dx/np.linalg.norm(dx) - 2 * l2_reg * X)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ############################################################################

@@ -16,7 +16,11 @@ def tv_loss(img, tv_weight):
     # Your implementation should be vectorized and not require any loops!
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    _, H, W, _ = img.shape
+    right =  img[:, :-1, :, :] - img[:, 1:, :, :]
+    down =  img[:, :, :-1, :] - img[:, :, 1:, :]
+
+    return tv_weight * ( tf.norm(right)**2 + tf.norm(down)**2 )
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -41,8 +45,15 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     # Hint: you can do this with one for loop over the style layers, and should
     # not be short code (~5 lines). You will need to use your gram_matrix function.
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    style_loss = 0
 
-    pass
+    for i in range(len(style_targets)):
+      mat1 = gram_matrix(feats[style_layers[i]])
+      mat2 = style_targets[i]
+      style_loss += style_weights[i] * tf.norm(mat1 - mat2)**2
+
+    return style_loss
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -62,7 +73,15 @@ def gram_matrix(features, normalize=True):
     """
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    _, H, W, C = features.shape
+    X = tf.transpose(features, perm=[3,0,1,2])
+    X = tf.reshape(X, (C, -1))
+    gram = X @ tf.transpose(X)
+    
+    if normalize:
+      gram = gram / (H * W * C) 
+    
+    return gram
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -80,7 +99,10 @@ def content_loss(content_weight, content_current, content_original):
     """
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # return(content_weight * tf.norm(content_current - content_original)**2)
+    # return content_weight * tf.reduce_sum( tf.square(content_current - content_original) )
+    return content_weight * tf.reduce_sum(tf.math.squared_difference(content_current, content_original))
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 

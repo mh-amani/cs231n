@@ -36,13 +36,17 @@ def svm_loss_naive(W, X, y, reg):
             margin = scores[j] - correct_class_score + 1 # note delta = 1
             if margin > 0:
                 loss += margin
+                dW[:,y[i]] -= X[i]
+                dW[:,j] += X[i]
 
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
     loss /= num_train
+    dW /= num_train
 
     # Add regularization to the loss.
     loss += reg * np.sum(W * W)
+    dW += 2 * reg * W
 
     #############################################################################
     # TODO:                                                                     #
@@ -54,7 +58,7 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # modified the code above :) 
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -77,9 +81,21 @@ def svm_loss_vectorized(W, X, y, reg):
     # result in loss.                                                           #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    num_train = X.shape[0]
+    num_classes = W.shape[1]  
+    scores = X.dot(W)
+    true_weights = W.T[y].T
 
-    pass
-
+    correct_class_score = np.diagonal(X.dot(true_weights))
+    scores = scores - correct_class_score.reshape(num_train,1) + 1
+    loss = np.sum(
+      np.maximum(0, scores)
+    ) - num_train
+    
+    loss /= num_train
+    loss += reg * np.sum(W * W)
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     #############################################################################
@@ -93,7 +109,13 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    indicator = (scores > 0).astype('int')
+    dW += X.T.dot(indicator)
+    self_y_indicator = np.eye(num_classes)[y]
+    inidicator_summed = np.sum(indicator, axis=1).reshape(num_train,1)
+    dW -= X.T.dot((self_y_indicator * inidicator_summed ))
+    dW /= num_train
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 

@@ -16,7 +16,14 @@ def leaky_relu(x, alpha=0.01):
     # TODO: implement leaky ReLU
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # first way
+    # t = x.dtype
+    # a = tf.dtypes.cast((x>0), t)
+    # b = tf.dtypes.cast(1 - a, t)
+    # return a * x + alpha * b * x 
+
+    # second way
+    return tf.math.maximum(x, 0) - alpha * tf.math.maximum(-x, 0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -35,7 +42,7 @@ def sample_noise(batch_size, dim, seed=None):
     # TODO: sample and return noise
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    return tf.random.uniform([batch_size, dim], minval=-1, maxval=1, dtype=tf.dtypes.float32)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
@@ -59,8 +66,30 @@ def discriminator(seed=None):
     # HINT: tf.keras.models.Sequential might be helpful.                         #
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    model = tf.keras.Sequential([
+      tf.keras.layers.Dense(256, input_dim=(784)),
+      tf.keras.layers.LeakyReLU(alpha=0.3),
+      tf.keras.layers.Dense(256),
+      tf.keras.layers.LeakyReLU(alpha=0.3),
+      tf.keras.layers.Dense(1)
+    ])
 
-    pass
+    # # why isn't this working?
+    # class model(tf.keras.Model):
+    #   def __init__(self):
+    #       super(model, self).__init__()        
+    #       self.fc1 = tf.keras.layers.Dense(256)
+    #       self.fc2 = tf.keras.layers.Dense(256)
+    #       self.fc3 = tf.keras.layers.Dense(1)
+      
+    #   def call(self, x, training=False):
+    #       x = self.fc1(x)
+    #       x = leaky_relu(x)
+    #       x = self.fc2(x)
+    #       x = leaky_relu(x)
+    #       x = self.fc2(x)
+    #       return x
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -88,7 +117,11 @@ def generator(noise_dim=NOISE_DIM, seed=None):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    model = tf.keras.Sequential([
+      tf.keras.layers.Dense(1024, input_dim=noise_dim, activation='relu'),
+      tf.keras.layers.Dense(1024, activation='relu'),
+      tf.keras.layers.Dense(784, activation='tanh'),
+    ])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -110,7 +143,11 @@ def discriminator_loss(logits_real, logits_fake):
     loss = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N_real, _ = logits_real.shape 
+    N_fake, _ = logits_fake.shape 
+    bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+    loss = bce(tf.ones(N_real, 1), logits_real)
+    loss += bce(tf.zeros(N_fake, 1), logits_fake)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return loss
@@ -128,7 +165,9 @@ def generator_loss(logits_fake):
     loss = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, _ = logits_fake.shape 
+    bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+    loss = bce(tf.ones(N, 1), logits_fake)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return loss
@@ -150,7 +189,9 @@ def get_solvers(learning_rate=1e-3, beta1=0.5):
     G_solver = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    D_solver = tf.keras.optimizers.Adam(learning_rate, beta1, beta_2=0.999, epsilon=1e-07)
+    G_solver = tf.keras.optimizers.Adam(learning_rate, beta1, beta_2=0.999, epsilon=1e-07)
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return D_solver, G_solver
@@ -169,7 +210,8 @@ def ls_discriminator_loss(scores_real, scores_fake):
     loss = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    loss = 0.5 * (tf.math.reduce_mean((scores_real - 1)**2) +\
+     tf.math.reduce_mean((scores_fake)**2))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return loss
@@ -187,7 +229,7 @@ def ls_generator_loss(scores_fake):
     loss = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    loss = 0.5 * tf.math.reduce_mean((scores_fake - 1)**2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return loss
@@ -210,7 +252,19 @@ def dc_discriminator():
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    model = tf.keras.Sequential([
+      tf.keras.layers.Reshape((28, 28, 1), input_shape=(784,)),
+      tf.keras.layers.Conv2D(32, 5, input_shape=(28, 28, 1)),
+      tf.keras.layers.LeakyReLU(alpha=0.01),
+      tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=(2,2)),
+      tf.keras.layers.Conv2D(64, 5),
+      tf.keras.layers.LeakyReLU(alpha=0.01),
+      tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=(2,2)),
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(4*4*64),
+      tf.keras.layers.LeakyReLU(alpha=0.01),
+      tf.keras.layers.Dense(1)
+    ])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -232,7 +286,19 @@ def dc_generator(noise_dim=NOISE_DIM):
     # TODO: implement architecture
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    model = tf.keras.Sequential([
+      tf.keras.layers.Dense(1024, input_dim=noise_dim, activation='relu'),
+      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.Dense(7*7*128, activation='relu'),
+      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.Reshape((7,7,128)),
+      tf.keras.layers.Conv2DTranspose(64, 4, strides=2, padding='same', input_shape=(7, 7, 128)),
+      tf.keras.layers.ReLU(),
+      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.Conv2DTranspose(1, 4, strides=2, padding='same', ),
+      tf.keras.layers.Activation('tanh'),
+      tf.keras.layers.Reshape((784,))
+    ])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     return model

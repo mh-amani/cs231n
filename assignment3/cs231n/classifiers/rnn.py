@@ -151,7 +151,29 @@ class CaptioningRNN(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h0, cache0 = affine_forward(features, W_proj, b_proj)
+        wordvects, cache_wordvects = word_embedding_forward(captions_in, W_embed)
+
+        if (self.cell_type == 'rnn'):
+          hidden, cache_hidden = rnn_forward(wordvects, h0, Wx, Wh, b)
+        
+        if (self.cell_type == 'lstm'):
+          hidden, cache_hidden = lstm_forward(wordvects, h0, Wx, Wh, b)
+        
+        scores, cache_scores = temporal_affine_forward(hidden, W_vocab, b_vocab)
+        loss, dloss = temporal_softmax_loss(scores, captions_out, mask, verbose=False)
+
+      
+        do, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dloss, cache_scores)
+
+        if (self.cell_type == 'rnn'):
+          do, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(do, cache_hidden)
+
+        if (self.cell_type == 'lstm'):
+          do, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(do, cache_hidden)
+        
+        grads['W_embed'] = word_embedding_backward(do, cache_wordvects)
+        _, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, cache0)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -219,7 +241,22 @@ class CaptioningRNN(object):
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h = features.dot(W_proj) + b_proj
+        c = np.zeros_like(h)
+
+        wc0 = self._start * np.ones((N, 1), np.int8)
+        wordvect, _ = W_embed[wc0]
+
+        for i in range(1, max_length):
+
+          if (self.cell_type == 'rnn'):
+            h, _ = rnn_step_forward(wordvect, h, Wx, Wh, b)
+          elif (self.cell_type == 'lstm'):
+            h, c, _ = lstm_step_forward(wordvect, h, c, Wx, Wh, b)
+
+          scores = h.dot(W_vocab) + b_vocab
+          captions[:, i] = np.argmax(scores, axis=1)
+          wordvect = W_embed[captions[:, i]]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

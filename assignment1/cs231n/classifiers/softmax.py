@@ -33,7 +33,27 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_sample = X.shape[0]
+    num_classes = W.shape[1]
+
+    for i in range(num_sample):
+      # loss
+      score = X[i].dot(W)
+      score -= np.max(score)
+      score_exp = np.exp(score)
+      score_exp_sum = np.sum(score_exp)
+      loss += np.log(score_exp_sum) - score[y[i]]
+      
+      # gradient
+      dW[:,y[i]] -= X[i]
+      for j in range(num_classes):
+        dW[:,j] += X[i] * np.exp(score[j]) / score_exp_sum
+
+    loss /= num_sample
+    loss += reg * np.sum(W**2)
+
+    dW /= num_sample
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -58,7 +78,25 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_sample = X.shape[0]
+    num_classes = W.shape[1]
+
+    # loss
+    score = X.dot(W)
+    score -= np.max(score, axis=1).reshape(num_sample,1)
+    score_exp = np.exp(score)
+    score_exp_sum = np.sum(score_exp, axis=1)
+    mask = np.eye(num_classes)[y]
+    score_masked = score * mask
+    loss += np.sum(np.log(score_exp_sum)) - np.sum(score_masked)
+    loss /= num_sample
+    loss += reg * np.sum(W**2)
+
+    # gradient
+    dW += np.divide(X , score_exp_sum.reshape(num_sample,1)).T.dot(score_exp)
+    dW -= X.T.dot(mask)
+    dW /= num_sample
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
